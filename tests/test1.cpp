@@ -1,4 +1,5 @@
 #include <fstream>
+#include <sstream>
 
 #include <print.hpp>
 
@@ -17,4 +18,11 @@ TEST(Print, InFileStream) {
   in >> result;
 
   EXPECT_EQ(result, text);
+}
+
+TEST(Print, InOstream) {
+  std::ostringstream out;
+  std::string text = "world";
+  print(text, out);
+  EXPECT_EQ(out.str(), text);
 }
