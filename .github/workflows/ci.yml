@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - { name: gcc,   cc: gcc,   cxx: g++ }
+          - { name: clang, cc: clang, cxx: clang++ }
+    name: linux-${{ matrix.compiler.name }}
+    env:
+      CC: ${{ matrix.compiler.cc }}
+      CXX: ${{ matrix.compiler.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Print toolchain versions
+        run: |
+          cmake --version
+          ${CC} --version
+          ${CXX} --version
+
+      - name: Configure
+        run: cmake -H. -B_build -DBUILD_TESTS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+      - name: Build
+        run: cmake --build _build
+
+      - name: Run tests
+        working-directory: _build
+        run: ctest --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-latest
+    name: coverage
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
+      - name: Configure with coverage
+        run: cmake -H. -B_build -DBUILD_TESTS=ON -DCOVERAGE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+      - name: Build
+        run: cmake --build _build
+
+      - name: Run tests
+        working-directory: _build
+        run: ctest --output-on-failure
+
+      - name: Capture coverage
+        run: |
+          lcov --capture --directory _build --output-file coverage.info \
+            --ignore-errors mismatch,negative,gcov,unused
+          lcov --remove coverage.info \
+            '*/third-party/*' '*/tests/*' '/usr/*' \
+            --output-file coverage.info \
+            --ignore-errors unused
+          lcov --list coverage.info
+
+      - name: Upload to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: coverage.info
+          format: lcov

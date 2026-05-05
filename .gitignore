@@ -1,0 +1,9 @@
+*build*/
+*install*/
+*.swp
+.idea/
+*.gcda
+*.gcno
+*.gcov
+coverage.info
+coverage/
